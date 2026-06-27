@@ -12,6 +12,7 @@ Command-line interface for [MarketSight](https://www.marketsight.app) — live g
 - Per-stock performance breakdown
 - Upcoming macro events — FOMC, ECB, CPI, NFP
 - Latest financial news with sentiment labels
+- `--range` flag on `market`, `watchlist`, and `portfolio` to view changes over a custom window (today, week, 3m, 6m, 1y)
 - `--raw` flag on every command to get the underlying JSON
 
 ## Installation
@@ -69,6 +70,11 @@ mw brief
 mw brief --force          # bypass server cache to get a fresh brief
 mw portfolio-brief
 mw portfolio-brief --force
+
+# Time range — change/change_pct reflects the chosen window
+mw market --range 1y
+mw watchlist --range 3m
+mw portfolio --range 6m   # Chg % column shows 6-month change; P&L stays since purchase
 
 # Raw JSON output
 mw portfolio --raw
