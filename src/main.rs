@@ -54,6 +54,20 @@ enum Commands {
         #[arg(long, help = "Print raw JSON")]
         raw: bool,
     },
+    /// Show AI-generated market brief
+    Brief {
+        #[arg(long, help = "Force refresh instead of using cached brief")]
+        force: bool,
+        #[arg(long, help = "Print raw JSON")]
+        raw: bool,
+    },
+    /// Show AI-generated portfolio brief with analysis and recommendations
+    PortfolioBrief {
+        #[arg(long, help = "Force refresh instead of using cached brief")]
+        force: bool,
+        #[arg(long, help = "Print raw JSON")]
+        raw: bool,
+    },
     /// Manage mw configuration
     Config {
         #[command(subcommand)]
@@ -104,6 +118,14 @@ fn run() -> Result<(), String> {
         Commands::StockPerformance { symbol, raw } => {
             let data = api::get_stock_performance(&symbol.to_uppercase())?;
             if raw { display::show_raw(&data) } else { display::show_stock_performance(&data) }
+        }
+        Commands::Brief { force, raw } => {
+            let data = api::get_brief(force)?;
+            if raw { display::show_raw(&data) } else { display::show_brief(&data) }
+        }
+        Commands::PortfolioBrief { force, raw } => {
+            let data = api::get_portfolio_brief(force)?;
+            if raw { display::show_raw(&data) } else { display::show_portfolio_brief(&data) }
         }
         Commands::Config { action } => match action {
             ConfigAction::SetKey { key } => api::save_api_key(&key)?,

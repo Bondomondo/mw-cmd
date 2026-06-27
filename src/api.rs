@@ -47,11 +47,11 @@ pub fn config_key_path() -> PathBuf {
     config_path()
 }
 
-fn get(path: &str, query: Option<&[(&str, &str)]>) -> Result<Value, String> {
+fn get_with_timeout(path: &str, query: Option<&[(&str, &str)]>, timeout_secs: u64) -> Result<Value, String> {
     let key = load_api_key()?;
     let url = format!("{BASE_URL}/{}", path.trim_start_matches('/'));
     let client = Client::builder()
-        .timeout(std::time::Duration::from_secs(20))
+        .timeout(std::time::Duration::from_secs(timeout_secs))
         .build()
         .map_err(|e| e.to_string())?;
 
@@ -67,6 +67,10 @@ fn get(path: &str, query: Option<&[(&str, &str)]>) -> Result<Value, String> {
         return Err(format!("HTTP {status}: {body}"));
     }
     resp.json::<Value>().map_err(|e| format!("JSON parse error: {e}"))
+}
+
+fn get(path: &str, query: Option<&[(&str, &str)]>) -> Result<Value, String> {
+    get_with_timeout(path, query, 20)
 }
 
 pub fn get_market() -> Result<Value, String> {
@@ -99,4 +103,14 @@ pub fn get_performance() -> Result<Value, String> {
 
 pub fn get_stock_performance(symbol: &str) -> Result<Value, String> {
     get(&format!("performance/{symbol}"), None)
+}
+
+pub fn get_brief(force: bool) -> Result<Value, String> {
+    let params: Option<Vec<(&str, &str)>> = if force { Some(vec![("force", "true")]) } else { None };
+    get_with_timeout("brief", params.as_deref(), 120)
+}
+
+pub fn get_portfolio_brief(force: bool) -> Result<Value, String> {
+    let params: Option<Vec<(&str, &str)>> = if force { Some(vec![("force", "true")]) } else { None };
+    get_with_timeout("portfolio/brief", params.as_deref(), 120)
 }

@@ -451,6 +451,158 @@ pub fn show_stock_performance(data: &Value) {
     if !meta.is_empty() { println!("  {}", meta.join("  ")); }
 }
 
+fn section_header(title: &str) {
+    println!("\n{}", title.bold().white());
+    println!("{}", "─".repeat(title.len()).bright_black());
+}
+
+fn risk_color(rating: &str) -> ColoredString {
+    match rating.to_lowercase().as_str() {
+        "very high" => rating.red().bold(),
+        "high"      => rating.red().into(),
+        "medium"    => rating.yellow().into(),
+        "low"       => rating.green().into(),
+        _           => rating.normal(),
+    }
+}
+
+fn rec_color(rec: &str) -> ColoredString {
+    match rec.to_lowercase().as_str() {
+        "sell" => rec.red().bold(),
+        "trim" => rec.red().into(),
+        "add"  => rec.green().bold(),
+        "hold" => rec.bright_black().into(),
+        _      => rec.normal(),
+    }
+}
+
+fn priority_color(p: &str) -> ColoredString {
+    match p.to_lowercase().as_str() {
+        "high"   => p.red().bold(),
+        "medium" => p.yellow().into(),
+        "low"    => p.bright_black().into(),
+        _        => p.normal(),
+    }
+}
+
+pub fn show_brief(data: &Value) {
+    println!("{}", "Market Brief".bold().cyan());
+    if let Some(ts) = data["generated_at"].as_i64() {
+        let mins_ago = (data["timestamp"].as_i64().unwrap_or(ts) - ts) / 60;
+        if mins_ago > 0 {
+            println!("{}", format!("(cached — generated {mins_ago} min ago, use --force to refresh)").bright_black());
+        }
+    }
+    if let Some(err) = data["error"].as_str() {
+        if !err.is_empty() {
+            eprintln!("{} {}", "Error:".red(), err);
+            return;
+        }
+    }
+
+    let sections = &data["sections"];
+    let order = [("general", "Overview"), ("equities", "Equities"), ("commodities", "Commodities"), ("currencies", "Currencies"), ("other", "Other")];
+    for (key, label) in &order {
+        if let Some(text) = sections[key].as_str() {
+            section_header(label);
+            println!("{text}");
+        }
+    }
+    println!();
+}
+
+pub fn show_portfolio_brief(data: &Value) {
+    println!("{}", "Portfolio Brief".bold().cyan());
+    if let Some(err) = data["error"].as_str() {
+        if !err.is_empty() {
+            eprintln!("{} {}", "Error:".red(), err);
+            return;
+        }
+    }
+
+    let sections = &data["sections"];
+
+    // narrative sections
+    for (key, label) in &[("summary", "Summary"), ("performance", "Performance"), ("risk", "Risk"), ("diversification", "Diversification"), ("opportunities", "Opportunities"), ("outlook", "Outlook")] {
+        if let Some(text) = sections[key].as_str() {
+            section_header(label);
+            println!("{text}");
+        }
+    }
+
+    // portfolio risks table
+    if let Some(risks) = sections["portfolio_risks"].as_array() {
+        section_header("Portfolio Risks");
+        let mut t = new_table();
+        t.set_header(vec![header_cell("Category"), header_cell("Rating"), header_cell("Detail")]);
+        for r in risks {
+            let rating = r["rating"].as_str().unwrap_or("—");
+            t.add_row(vec![
+                Cell::new(r["category"].as_str().unwrap_or("—")).add_attribute(Attribute::Bold),
+                Cell::new(rating).fg(match rating.to_lowercase().as_str() {
+                    "very high" => Color::Red,
+                    "high"      => Color::Red,
+                    "medium"    => Color::Yellow,
+                    "low"       => Color::Green,
+                    _           => Color::White,
+                }).add_attribute(if rating.to_lowercase() == "very high" { Attribute::Bold } else { Attribute::Reset }),
+                Cell::new(r["detail"].as_str().unwrap_or("—")),
+            ]);
+        }
+        println!("{t}");
+    }
+
+    // suggested changes table
+    if let Some(changes) = sections["suggested_changes"].as_array() {
+        section_header("Suggested Changes");
+        let mut t = new_table();
+        t.set_header(vec![header_cell("Priority"), header_cell("Symbol"), header_cell("Action"), header_cell("Rationale")]);
+        for c in changes {
+            let priority = c["priority"].as_str().unwrap_or("—");
+            t.add_row(vec![
+                Cell::new(priority).fg(match priority.to_lowercase().as_str() {
+                    "high"   => Color::Red,
+                    "medium" => Color::Yellow,
+                    _        => Color::DarkGrey,
+                }).add_attribute(if priority.to_lowercase() == "high" { Attribute::Bold } else { Attribute::Reset }),
+                Cell::new(c["symbol"].as_str().unwrap_or("—")).add_attribute(Attribute::Bold),
+                Cell::new(c["action"].as_str().unwrap_or("—")),
+                Cell::new(c["rationale"].as_str().unwrap_or("—")),
+            ]);
+        }
+        println!("{t}");
+    }
+
+    // position analysis table
+    if let Some(positions) = sections["position_analysis"].as_array() {
+        section_header("Position Analysis");
+        let mut t = new_table();
+        t.set_header(vec![header_cell("Symbol"), header_cell("Risk"), header_cell("Rec."), header_cell("Summary")]);
+        for p in positions {
+            let risk = p["risk_level"].as_str().unwrap_or("—");
+            let rec  = p["recommendation"].as_str().unwrap_or("—");
+            t.add_row(vec![
+                Cell::new(p["symbol"].as_str().unwrap_or("—")).add_attribute(Attribute::Bold),
+                Cell::new(risk).fg(match risk.to_lowercase().as_str() {
+                    "very high" => Color::Red,
+                    "high"      => Color::Red,
+                    "medium"    => Color::Yellow,
+                    "low"       => Color::Green,
+                    _           => Color::White,
+                }),
+                Cell::new(rec).fg(match rec.to_lowercase().as_str() {
+                    "sell" | "trim" => Color::Red,
+                    "add"           => Color::Green,
+                    _               => Color::DarkGrey,
+                }),
+                Cell::new(p["risk_summary"].as_str().unwrap_or("—")),
+            ]);
+        }
+        println!("{t}");
+    }
+    println!();
+}
+
 pub fn show_raw(data: &Value) {
     println!("{}", serde_json::to_string_pretty(data).unwrap_or_default());
 }
