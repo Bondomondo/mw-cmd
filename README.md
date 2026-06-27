@@ -49,6 +49,8 @@ Commands:
   stock-performance  Per-stock performance for a single position
   news               Latest financial news
   calendar           Upcoming high-impact events (FOMC, CPI, NFP, ECB…)
+  brief              AI-generated market brief (overview, equities, commodities, currencies)
+  portfolio-brief    AI portfolio analysis with risk ratings, suggested changes, and per-position recommendations
   config             Manage API key
 ```
 
@@ -63,6 +65,10 @@ mw performance
 mw stock-performance SSAB-B.ST
 mw calendar
 mw news
+mw brief
+mw brief --force          # bypass server cache to get a fresh brief
+mw portfolio-brief
+mw portfolio-brief --force
 
 # Raw JSON output
 mw portfolio --raw
