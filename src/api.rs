@@ -73,8 +73,9 @@ fn get(path: &str, query: Option<&[(&str, &str)]>) -> Result<Value, String> {
     get_with_timeout(path, query, 20)
 }
 
-pub fn get_market() -> Result<Value, String> {
-    get("market", None)
+pub fn get_market(range: Option<&str>) -> Result<Value, String> {
+    let params: Option<Vec<(&str, &str)>> = range.map(|r| vec![("range", r)]);
+    get("market", params.as_deref())
 }
 
 pub fn get_news() -> Result<Value, String> {
@@ -85,16 +86,18 @@ pub fn get_calendar() -> Result<Value, String> {
     get("calendar", None)
 }
 
-pub fn get_watchlist() -> Result<Value, String> {
-    get("watchlist", None)
+pub fn get_watchlist(range: Option<&str>) -> Result<Value, String> {
+    let params: Option<Vec<(&str, &str)>> = range.map(|r| vec![("range", r)]);
+    get("watchlist", params.as_deref())
 }
 
 pub fn get_quote(symbol: &str) -> Result<Value, String> {
     get("quote", Some(&[("symbol", symbol)]))
 }
 
-pub fn get_portfolio() -> Result<Value, String> {
-    get("portfolio", None)
+pub fn get_portfolio(range: Option<&str>) -> Result<Value, String> {
+    let params: Option<Vec<(&str, &str)>> = range.map(|r| vec![("range", r)]);
+    get("portfolio", params.as_deref())
 }
 
 pub fn get_performance() -> Result<Value, String> {

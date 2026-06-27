@@ -16,6 +16,8 @@ enum Commands {
     Market {
         #[arg(long, help = "Print raw JSON")]
         raw: bool,
+        #[arg(long, value_name = "RANGE", help = "Time range: today (default), week, 3m, 6m, 1y")]
+        range: Option<String>,
     },
     /// Show live quote for a symbol (e.g. AAPL, BTC-USD, ^GSPC)
     Quote {
@@ -27,11 +29,15 @@ enum Commands {
     Watchlist {
         #[arg(long, help = "Print raw JSON")]
         raw: bool,
+        #[arg(long, value_name = "RANGE", help = "Time range: today (default), week, 3m, 6m, 1y")]
+        range: Option<String>,
     },
     /// Show portfolio positions with live P&L
     Portfolio {
         #[arg(long, help = "Print raw JSON")]
         raw: bool,
+        #[arg(long, value_name = "RANGE", help = "Time range for position change % (today default, week, 3m, 6m, 1y); P&L always shows since purchase")]
+        range: Option<String>,
     },
     /// Show latest financial news
     News {
@@ -87,20 +93,20 @@ fn run() -> Result<(), String> {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Market { raw } => {
-            let data = api::get_market()?;
+        Commands::Market { raw, range } => {
+            let data = api::get_market(range.as_deref())?;
             if raw { display::show_raw(&data) } else { display::show_market(&data) }
         }
         Commands::Quote { symbol, raw } => {
             let data = api::get_quote(&symbol.to_uppercase())?;
             if raw { display::show_raw(&data) } else { display::show_quote(&data) }
         }
-        Commands::Watchlist { raw } => {
-            let data = api::get_watchlist()?;
+        Commands::Watchlist { raw, range } => {
+            let data = api::get_watchlist(range.as_deref())?;
             if raw { display::show_raw(&data) } else { display::show_watchlist(&data) }
         }
-        Commands::Portfolio { raw } => {
-            let data = api::get_portfolio()?;
+        Commands::Portfolio { raw, range } => {
+            let data = api::get_portfolio(range.as_deref())?;
             if raw { display::show_raw(&data) } else { display::show_portfolio(&data) }
         }
         Commands::News { raw } => {

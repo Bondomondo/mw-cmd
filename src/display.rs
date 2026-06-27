@@ -91,6 +91,11 @@ pub fn show_market(data: &Value) {
         None => { eprintln!("No market data."); return; }
     };
 
+    let range = data["range"].as_str().unwrap_or("today");
+    if range != "today" {
+        println!("{}", format!("Range: {}", range.to_uppercase()).bright_black());
+    }
+
     // group by region
     let mut regions: Vec<String> = Vec::new();
     let mut by_region: std::collections::BTreeMap<String, Vec<&Value>> = Default::default();
@@ -182,22 +187,35 @@ pub fn show_watchlist(data: &Value) {
         Some(q) => q,
         None => { eprintln!("Watchlist is empty."); return; }
     };
+
+    let range = data["range"].as_str().unwrap_or("today");
+    let is_ranged = range != "today";
+    if is_ranged {
+        println!("{}", format!("Range: {}", range.to_uppercase()).bright_black());
+    }
+
+    let ref_col = if is_ranged { "Ref Price" } else { "Prev Close" };
     let mut t = new_table();
     t.set_header(vec![
         header_cell("Symbol"),
         header_cell("Price"),
         header_cell("Change"),
         header_cell("Chg %"),
-        header_cell("Prev Close"),
+        header_cell(ref_col),
     ]);
     for q in quotes {
+        let ref_price = if is_ranged {
+            f64_val(&q["reference_price"])
+        } else {
+            f64_val(&q["prev_close"])
+        };
         t.add_row(vec![
             Cell::new(str_val(q, "symbol")).add_attribute(Attribute::Bold),
             Cell::new(f64_val(&q["price"]).map_or("—".to_string(), |p| fmt_f(p, 2)))
                 .set_alignment(CellAlignment::Right),
             change_cell(f64_val(&q["change"]), None, false).set_alignment(CellAlignment::Right),
             change_cell(None, f64_val(&q["change_pct"]), false).set_alignment(CellAlignment::Right),
-            Cell::new(f64_val(&q["prev_close"]).map_or("—".to_string(), |p| fmt_f(p, 2)))
+            Cell::new(ref_price.map_or("—".to_string(), |p| fmt_f(p, 2)))
                 .set_alignment(CellAlignment::Right),
         ]);
     }
@@ -205,12 +223,18 @@ pub fn show_watchlist(data: &Value) {
 }
 
 pub fn show_portfolio(data: &Value) {
+    let range = data["range"].as_str().unwrap_or("today");
+    let is_ranged = range != "today";
+
     if let Some(summary) = data["summary"].as_object() {
         let total_value = summary.get("total_value").and_then(|v| v.as_f64());
         let total_pnl   = summary.get("total_pnl").and_then(|v| v.as_f64());
         let total_pct   = summary.get("total_pnl_pct").and_then(|v| v.as_f64());
 
         println!("\n{}", "Portfolio Summary".bold().cyan());
+        if is_ranged {
+            println!("  {}  {}", dim("Change range:"), range.to_uppercase().normal());
+        }
         println!(
             "  {}  {}",
             dim("Total Value:"),
@@ -232,13 +256,18 @@ pub fn show_portfolio(data: &Value) {
         None => { eprintln!("No positions found."); return; }
     };
 
+    let chg_col = if is_ranged {
+        format!("Chg % ({})", range.to_uppercase())
+    } else {
+        "Chg %".to_string()
+    };
     let mut t = new_table();
     t.set_header(vec![
         header_cell("Symbol"),
         header_cell("Qty"),
         header_cell("Avg Cost"),
         header_cell("Price"),
-        header_cell("Chg %"),
+        header_cell(&chg_col),
         header_cell("Value"),
         header_cell("P&L"),
         header_cell("P&L %"),
