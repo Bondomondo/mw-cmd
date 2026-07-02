@@ -4,77 +4,101 @@ mod display;
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
-#[command(name = "mw", version = "0.1.0", about = "MarketSight CLI — live market & portfolio data from marketsight.app")]
+#[command(
+    name = "mw",
+    version = "0.2.0",
+    about = "MarketSight CLI — live market & portfolio data from marketsight.app",
+    long_about = "MarketSight CLI — live market & portfolio data from marketsight.app\n\nRequires a MarketSight API key. Set it once with:\n  mw config set-key <KEY>\nor via the MARKETWATCH_API_KEY environment variable."
+)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
 }
 
+const RANGE_LONG_HELP: &str = "\
+Time window for change / change_pct values:
+
+  today   vs previous close (default)
+  week    last 7 days
+  3m      last 3 months
+  6m      last 6 months
+  1y      last 1 year
+
+Common aliases are accepted (1w, 3mo, 6mo, 1yr, year).
+An unrecognised value returns an error listing the valid options.";
+
 #[derive(Subcommand)]
 enum Commands {
-    /// Show current global market overview (indices, FX, commodities)
+    /// Show global market overview — indices, FX, commodities, bonds grouped by region
     Market {
-        #[arg(long, help = "Print raw JSON")]
-        raw: bool,
-        #[arg(long, value_name = "RANGE", help = "Time range: today (default), week, 3m, 6m, 1y")]
+        #[arg(long, value_name = "RANGE", help = "Time range: today (default), week, 3m, 6m, 1y", long_help = RANGE_LONG_HELP)]
         range: Option<String>,
+        #[arg(long, help = "Print raw JSON instead of formatted output")]
+        raw: bool,
     },
-    /// Show live quote for a symbol (e.g. AAPL, BTC-USD, ^GSPC)
+    /// Show live quote for a symbol
     Quote {
+        #[arg(value_name = "SYMBOL", help = "Ticker symbol, e.g. AAPL, BTC-USD, ^GSPC, SSAB-B.ST")]
         symbol: String,
-        #[arg(long, help = "Print raw JSON")]
+        #[arg(long, help = "Print raw JSON instead of formatted output")]
         raw: bool,
     },
-    /// Show your saved MarketSight watchlist
+    /// Show your saved MarketSight watchlist with live prices
     Watchlist {
-        #[arg(long, help = "Print raw JSON")]
-        raw: bool,
-        #[arg(long, value_name = "RANGE", help = "Time range: today (default), week, 3m, 6m, 1y")]
+        #[arg(long, value_name = "RANGE", help = "Time range: today (default), week, 3m, 6m, 1y", long_help = RANGE_LONG_HELP)]
         range: Option<String>,
+        #[arg(long, help = "Print raw JSON instead of formatted output")]
+        raw: bool,
     },
-    /// Show portfolio positions with live P&L
+    /// Show portfolio positions with live prices and unrealised P&L
     Portfolio {
-        #[arg(long, help = "Print raw JSON")]
-        raw: bool,
-        #[arg(long, value_name = "RANGE", help = "Time range for position change % (today default, week, 3m, 6m, 1y); P&L always shows since purchase")]
+        #[arg(
+            long,
+            value_name = "RANGE",
+            help = "Time range for the Chg % column: today (default), week, 3m, 6m, 1y",
+            long_help = "Time window for the per-position change / change_pct column.\n\n  today   vs previous close (default)\n  week    last 7 days\n  3m      last 3 months\n  6m      last 6 months\n  1y      last 1 year\n\nP&L and P&L % always reflect total return since purchase regardless of range."
+        )]
         range: Option<String>,
-    },
-    /// Show latest financial news
-    News {
-        #[arg(long, help = "Print raw JSON")]
+        #[arg(long, help = "Print raw JSON instead of formatted output")]
         raw: bool,
     },
-    /// Show upcoming high-impact market events (FOMC, CPI, NFP, ECB…)
+    /// Show latest financial news with sentiment labels
+    News {
+        #[arg(long, help = "Print raw JSON instead of formatted output")]
+        raw: bool,
+    },
+    /// Show upcoming high-impact macro events (FOMC, ECB, CPI, NFP…)
     Calendar {
-        #[arg(long, help = "Print raw JSON")]
+        #[arg(long, help = "Print raw JSON instead of formatted output")]
         raw: bool,
     },
     /// Show portfolio performance for today, this week, this month and since purchase
     Performance {
-        #[arg(long, help = "Print raw JSON")]
+        #[arg(long, help = "Print raw JSON instead of formatted output")]
         raw: bool,
     },
-    /// Show performance for a single stock in your portfolio
+    /// Show performance breakdown for a single stock in your portfolio
     StockPerformance {
+        #[arg(value_name = "SYMBOL", help = "Ticker symbol of a position in your portfolio, e.g. AAPL")]
         symbol: String,
-        #[arg(long, help = "Print raw JSON")]
+        #[arg(long, help = "Print raw JSON instead of formatted output")]
         raw: bool,
     },
-    /// Show AI-generated market brief
+    /// Show AI-generated market brief (overview, equities, commodities, currencies)
     Brief {
-        #[arg(long, help = "Force refresh instead of using cached brief")]
+        #[arg(long, help = "Bypass the server cache and generate a fresh brief")]
         force: bool,
-        #[arg(long, help = "Print raw JSON")]
+        #[arg(long, help = "Print raw JSON instead of formatted output")]
         raw: bool,
     },
-    /// Show AI-generated portfolio brief with analysis and recommendations
+    /// Show AI portfolio analysis — risk ratings, position recommendations, suggested changes
     PortfolioBrief {
-        #[arg(long, help = "Force refresh instead of using cached brief")]
+        #[arg(long, help = "Bypass the server cache and generate a fresh brief")]
         force: bool,
-        #[arg(long, help = "Print raw JSON")]
+        #[arg(long, help = "Print raw JSON instead of formatted output")]
         raw: bool,
     },
-    /// Manage mw configuration
+    /// Manage mw configuration (API key)
     Config {
         #[command(subcommand)]
         action: ConfigAction,
@@ -83,9 +107,12 @@ enum Commands {
 
 #[derive(Subcommand)]
 enum ConfigAction {
-    /// Save your MarketSight API key
-    SetKey { key: String },
-    /// Show current config
+    /// Save your MarketSight API key (stored in ~/.config/mw/api_key)
+    SetKey {
+        #[arg(value_name = "KEY", help = "API key from marketsight.app → Settings → API")]
+        key: String,
+    },
+    /// Show the current API key source and prefix
     Show,
 }
 
